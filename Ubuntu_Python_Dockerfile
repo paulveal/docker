@@ -1,0 +1,124 @@
+# Base image
+FROM ubuntu
+LABEL author="Paul Veal"
+LABEL os_type="ubuntu"
+LABEL purpose="python"
+
+# Set environment variables to prevent interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Copy the script into the Docker image
+COPY unminimise.sh /usr/local/bin/unminimise.sh
+
+# Make the script executable
+RUN chmod +x /usr/local/bin/unminimise.sh
+
+# Run the script
+RUN /usr/local/bin/unminimise.sh
+
+# Update package list
+RUN apt-get update
+
+# Upgrade existing packages
+RUN apt-get upgrade -y
+
+# Install locales and set UTF-8
+RUN apt-get install -y locales
+RUN locale-gen en_US.UTF-8
+RUN update-locale LANG=en_US.UTF-8
+
+# Set environment variables for locale
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# Install man pages
+RUN apt-get install -y man
+RUN apt-get install -y dialog
+RUN apt-get install -y man-db
+RUN apt-get install -y manpages
+
+# Install curl (used for downloading other tools)
+RUN apt-get install -y curl
+
+# # Install wget (alternative for downloads)
+RUN apt-get install -y wget
+
+# Install unzip and zip (for file management)
+RUN apt-get install -y unzip
+RUN apt-get install -y zip
+
+# Install vim (editor)
+RUN apt-get install -y vim
+
+# Install sudo (for administrative tasks)
+RUN apt-get install -y sudo
+
+# Install git (version control)
+RUN apt-get install -y git
+
+# Install unzip and zip (for file management)
+RUN apt-get install -y unzip
+RUN apt-get install -y zip
+
+# Install GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+RUN chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+RUN apt-get update
+RUN apt-get install -y gh
+
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+RUN unzip awscliv2.zip
+RUN ./aws/install
+RUN rm -rf awscliv2.zip aws
+
+# Add Node.js repository
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+
+# Install Node.js
+RUN apt-get install -y nodejs
+
+# Install Docker CLI
+RUN apt-get install -y docker.io
+
+# Install zsh (shell)
+RUN apt-get install -y zsh
+
+# Install pip (Python package manager)
+RUN apt-get install -y python3-pip
+
+# # Create a symlink for Python3 to Python
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# Install additional Python libraries using apt
+RUN apt-get install -y python3-requests
+RUN apt-get install -y python3-numpy
+RUN apt-get install -y python3-pandas
+RUN apt-get install -y python3-scipy
+RUN apt-get install -y python3-matplotlib
+RUN apt-get install -y python3-sklearn
+
+# Add a user named 'docker' and add them to the 'docker' group
+RUN adduser --quiet --disabled-password --shell /bin/zsh --home /home/docker --gecos "Docker User" --ingroup docker docker
+RUN echo 'docker ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Clean up package manager cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create mount point
+RUN mkdir /localmount
+
+# Switch to the 'docker' user
+USER docker
+
+# Set the working directory
+WORKDIR /home/docker
+
+RUN mkdir /home/docker/tmp -p
+RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | zsh || true
+COPY --chown=docker:docker docker.zshrc /home/docker/.zshrc
+
+# Default command
+CMD ["/usr/bin/zsh"]

@@ -1,0 +1,44 @@
+FROM amazonlinux:2
+LABEL author="Paul Veal"
+LABEL os_type="amazonlinux2"
+LABEL purpose="general"
+
+# Install apps
+RUN yum update -y && \
+    yum install -y sudo curl glibc-common glibc-langpack-en git gnupg2 zsh wget unzip vim man && \
+    echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
+    localedef -i en_US -f UTF-8 en_US.UTF-8 || true
+
+# Install Node.js
+RUN curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
+RUN yum install -y nodejs
+
+# Install GitHub CLI
+RUN amazon-linux-extras install epel -y && \
+    yum install -y yum-utils && \
+    yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo && \
+    yum install -y gh
+
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws
+
+# Create user docker
+RUN useradd -m -s /bin/zsh docker
+RUN echo "docker:docker" | chpasswd && usermod -aG wheel docker
+
+# Create mount point
+RUN mkdir /localmount
+
+# Switch to user and setup oh-my-zsh
+USER docker
+ENV TERM=xterm
+WORKDIR /home/docker
+RUN mkdir /home/docker/tmp -p
+RUN wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O - | zsh || true
+COPY --chown=docker:docker docker.zshrc /home/docker/.zshrc
+
+# Default command
+CMD ["/usr/bin/zsh"]
